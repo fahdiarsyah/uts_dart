@@ -9,7 +9,7 @@ class TodoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       home: TodoList(),
     );
   }
@@ -25,9 +25,9 @@ class TodoList extends StatefulWidget {
 }
 
 class _TodoList extends State<TodoList>{
-  TextEditingController _namaCtrl = TextEditingController();
-  TextEditingController _deksripsiCtrl = TextEditingController();
-  TextEditingController _searchCtrl = TextEditingController();
+  final TextEditingController _namaCtrl = TextEditingController();
+  final TextEditingController _deksripsiCtrl = TextEditingController();
+  final TextEditingController _searchCtrl = TextEditingController();
   List<Todo> todoList = [];
 
   final dbHelper = DatabaseHelper();
@@ -48,8 +48,6 @@ class _TodoList extends State<TodoList>{
   void addItem() async {
     await dbHelper.addTodo(Todo(_namaCtrl.text, _deksripsiCtrl.text));
     refreshList();
-    _namaCtrl.text = '';
-    _deksripsiCtrl.text = '';
   }
 
   void updateItem(int index, bool done) async {
@@ -78,40 +76,72 @@ class _TodoList extends State<TodoList>{
     });
   }
 
-  void tampilForm() {
+  void editForm(int index) {
     showDialog(
-      context: context,
+      context: context, 
       builder: (context) => AlertDialog(
-        insetPadding: EdgeInsets.all(20),
-        title: Text("Tambah To-Do"),
+        insetPadding: const EdgeInsets.all(20),
+        title: const Text("Edit To-Do"),
         actions: [
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
             },
-            child: Text("Tutup")
+            child: const Text("CANCEL"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              todoList[index].nama = _namaCtrl.text;
+              todoList[index].deksripsi = _deksripsiCtrl.text;
+              dbHelper.updateTodo(todoList[index]);
+              refreshList();
+              Navigator.pop(context);
+            },
+            child: const Text("SAVE"),
+          ),
+        ],
+        content: SizedBox(
+          height: 250,
+          width: MediaQuery.of(context).size.width,
+          child: Column(
+            children: [
+              tfieldTodo(_namaCtrl..text = todoList[index].nama, "Name of Activity"),
+              tfieldTodo(_deksripsiCtrl..text = todoList[index].deksripsi, "Description of Activities"),
+            ],
+          )
+        )
+      )
+    );
+  }
+
+  void tampilForm() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        insetPadding: const EdgeInsets.all(20),
+        title: const Text("Add To-Do"),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text("CLOSE")
           ),
           ElevatedButton(
             onPressed: () {
               addItem();
               Navigator.pop(context);
             },
-            child: Text("Tambah")
+            child: const Text("ADD")
           ),
         ],
-        content: Container(
+        content: SizedBox(
           height: 250,
           width: MediaQuery.of(context).size.width,
           child: Column(
             children: [
-              TextField(
-                controller: _namaCtrl,
-                decoration: InputDecoration(hintText: "Nama To-Do"),
-              ),
-              TextField(
-                controller: _deksripsiCtrl,
-                decoration: InputDecoration(hintText: "Deskripsi Kegiatan"),
-              )
+              tfieldTodo(_namaCtrl, "Name of Activity"),
+              tfieldTodo(_deksripsiCtrl, "Description of Activities"),
             ],
           )
         )
@@ -119,67 +149,120 @@ class _TodoList extends State<TodoList>{
     );
   }
 
+  TextField tfieldTodo(TextEditingController textCtrl, String? namaHint) {
+    return TextField(
+              controller: textCtrl,
+              decoration: InputDecoration(hintText: namaHint),
+            );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Aplikasi To-Do List'),
+        title: const Text(
+          'To-Do List Application',
+          style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 25,
+                  ),
+        ),
         centerTitle: true,
+        backgroundColor: Colors.black54,
+        elevation: 0,
       ),
+      backgroundColor: Colors.grey[200],
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          _namaCtrl.text = '';
+          _deksripsiCtrl.text = '';
           tampilForm();
         },
-        child: const Icon(Icons.add_box),
+        backgroundColor: Colors.black54,
+        foregroundColor: Colors.white,
+        child: attIcon(Icons.add_task_sharp, Colors.white),
       ),
       body: Column(
         children: [
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (_) {
-                cariTodo();
-              },
-              decoration: InputDecoration(
-                hintText: "Silahkan cari disini ..",
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: todoList.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  leading: todoList[index].done
-                    ? IconButton(
-                      icon: const Icon(Icons.check_circle),
-                      onPressed: () {
-                        updateItem(index, !todoList[index].done);
-                      },
-                    )
-                    : IconButton(
-                      icon: const Icon(Icons.radio_button_unchecked),
-                      onPressed: () {
-                        updateItem(index, !todoList[index].done);
-                      },
-                    ),
-                  title: Text(todoList[index].nama),
-                  subtitle: Text(todoList[index].deksripsi),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete),
-                    onPressed: () {
-                      deleteItem(todoList[index].id ?? 0);
-                    },
-                  ),
-                );
-              },
-            )
-          ),
+          navSearch(),
+          contentTodo(),
         ],
       ),
     );
+  }
+
+  Expanded contentTodo() {
+    return Expanded(
+          child: ListView.builder(
+            itemCount: todoList.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                leading: todoList[index].done
+                  ? IconButton(
+                    icon: attIcon(Icons.check_circle_sharp, Colors.black),
+                    onPressed: () {
+                      updateItem(index, !todoList[index].done);
+                    },
+                  )
+                  : IconButton(
+                    icon:attIcon(Icons.radio_button_unchecked_sharp, Colors.black),
+                    onPressed: () {
+                      updateItem(index, !todoList[index].done);
+                    },
+                  ),
+                title: Text(
+                  todoList[index].nama,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                subtitle: Text(todoList[index].deksripsi),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                  IconButton(
+                    icon: attIcon(Icons.edit_sharp, Colors.orange),
+                    onPressed: () {
+                      editForm(index);
+                    },
+                  ),
+                  IconButton(
+                    icon: attIcon(Icons.delete_sharp, Colors.red),
+                    onPressed: () {
+                      deleteItem(todoList[index].id ?? 0);
+                    },
+                  )],
+                ),
+              );
+            },
+          )
+        );
+  }
+
+  Icon attIcon(IconData namaIcon, Color? warnaIcon) {
+    return Icon(
+      namaIcon,
+      color: warnaIcon,
+    );
+  }
+
+  Container navSearch() {
+    return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: TextField(
+            controller: _searchCtrl,
+            onChanged: (_) {
+              cariTodo();
+            },
+            decoration: InputDecoration(
+              hintText: "Please search here...",
+              prefixIcon: const Icon(Icons.search_sharp),
+              border: OutlineInputBorder(
+               borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        );
   }
 }
